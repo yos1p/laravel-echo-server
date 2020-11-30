@@ -1,6 +1,5 @@
 import { Log } from './../log';
 import { Subscriber } from './subscriber';
-import url from 'url'
 import express from 'express'
 
 export class HttpSubscriber implements Subscriber {
@@ -8,32 +7,27 @@ export class HttpSubscriber implements Subscriber {
      * Create new instance of http subscriber.
      *
      */
-    constructor(private express: express.Application, private options) { }
+    constructor(private app: express.Application, private options: any) { }
 
     /**
      * Subscribe to events to broadcast.
      *
      * @return {Promise<void>}
      */
-    subscribe(callback): Promise<void> {
-        return new Promise((resolve, reject) => {
-            // Broadcast a message to a channel
-            this.express.post('/apps/:appId/events', (req, res) => {
-                let body: any = [];
-                res.on('error', (error) => {
-                    if (this.options.devMode) {
-                        Log.error(error);
-                    }
-                });
-
-                req.on('data', (chunk) => body.push(chunk))
-                    .on('end', () => this.handleData(req, res, body, callback));
+    async subscribe(callback: Function): Promise<void> {
+        this.app.post('/apps/:appId/events', (req, res) => {
+            let body: any = [];
+            res.on('error', (error) => {
+                if (this.options.devMode) {
+                    Log.error(error);
+                }
             });
 
-            Log.success('Listening for http events...');
-
-            resolve();
+            req.on('data', (chunk) => body.push(chunk))
+                .on('end', () => this.handleData(req, res, body, callback));
         });
+
+        Log.success('Listening for http events...');
     }
 
     /**
@@ -41,17 +35,14 @@ export class HttpSubscriber implements Subscriber {
      *
      * @return {Promise<void>}
      */
-    unsubscribe(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            try {
-                this.express.post('/apps/:appId/events', (req, res) => {
-                    res.status(404).send();
-                });
-                resolve();
-            } catch(e) {
-                reject('Could not overwrite the event endpoint -> ' + e);
-            }
-        });
+    async unsubscribe(): Promise<void> {
+        try {
+            this.app.post('/apps/:appId/events', (req, res) => {
+                res.status(404).send();
+            });
+        } catch(e) {
+            throw new Error('Could not overwrite the event endpoint -> ' + e);
+        }
     }
 
     /**
@@ -63,7 +54,7 @@ export class HttpSubscriber implements Subscriber {
      * @param  {Function} broadcast
      * @return {boolean}
      */
-    handleData(req, res, body, broadcast): boolean {
+    handleData(req: any, res: any, body: any, broadcast: Function): boolean | void {
         body = JSON.parse(Buffer.concat(body).toString());
 
         if ((body.channels || body.channel) && body.name && body.data) {

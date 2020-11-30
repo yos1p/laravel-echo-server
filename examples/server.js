@@ -1,7 +1,11 @@
 var echo = require('../dist/index.js');
 
 var options = {
-  host: 'http://example.dev',
+  host: 'localhost',
+  port: 8080
 };
 
-echo.run(options);
+const start = async function () {
+    await echo.run(options)
+}
+start()

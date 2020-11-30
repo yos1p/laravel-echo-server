@@ -11,33 +11,30 @@ export class Server {
      * The http server.
      *
      */
-    public express: express.Application;
+    public app?: express.Application;
 
     /**
      * Socket.io client.
      *
      */
-    public io: io.Server;
+    public io?: io.Server;
 
     /**
      * Create a new server instance.
      */
-    constructor(private options) { }
+    constructor(private options: any) { }
 
     /**
      * Start the Socket.io server.
      *
      * @return {void}
      */
-    init(): Promise<any> {
-        return new Promise((resolve, reject) => {
-            this.serverProtocol().then(() => {
-                let host = this.options.host || 'localhost';
-                Log.success(`Running at ${host} on port ${this.getPort()}`);
+    async init(): Promise<io.Server | undefined> {
+        await this.serverProtocol();
+        let host = this.options.host || 'localhost';
 
-                resolve(this.io);
-            }, error => reject(error));
-        });
+        Log.success(`Running at ${host} on port ${this.getPort()}`);
+        return this.io
     }
 
     /**
@@ -45,49 +42,46 @@ export class Server {
      *
      * @return {number}
      */
-    getPort() {
+    getPort(): number {
         let portRegex = /([0-9]{2,5})[\/]?$/;
         let portToUse = String(this.options.port).match(portRegex); // index 1 contains the cleaned port number only
-        return Number(portToUse[1]);
+        if (portToUse !== null) {
+            return Number(portToUse[1]);
+        }
+
+        return 8080
     }
 
     /**
      * Select the http protocol to run on.
      *
-     * @return {Promise<any>}
      */
-    serverProtocol(): Promise<any> {
-        return new Promise((resolve, reject) => {
-            if (this.options.protocol == 'https') {
-                this.secure().then(() => {
-                    resolve(this.httpServer(true));
-                }, error => reject(error));
-            } else {
-                resolve(this.httpServer(false));
-            }
-        });
+    async serverProtocol() {
+        if (this.options.protocol == 'https') {
+            await this.secure()
+            this.httpServer(true)
+        } else {
+            this.httpServer(false)
+        }
     }
 
     /**
      * Load SSL 'key' & 'cert' files if https is enabled.
      *
-     * @return {void}
      */
-    secure(): Promise<any> {
-        return new Promise((resolve, reject) => {
-            if (!this.options.sslCertPath || !this.options.sslKeyPath) {
-                reject('SSL paths are missing in server config.');
-            }
+    async secure() {
+        if (!this.options.sslCertPath || !this.options.sslKeyPath) {
+            throw new Error('SSL paths are missing in server config.');
+        }
 
-            Object.assign(this.options, {
-                cert: fs.readFileSync(this.options.sslCertPath),
-                key: fs.readFileSync(this.options.sslKeyPath),
-                ca: (this.options.sslCertChainPath) ? fs.readFileSync(this.options.sslCertChainPath) : '',
-                passphrase: this.options.sslPassphrase,
-            });
-
-            resolve(this.options);
+        Object.assign(this.options, {
+            cert: fs.readFileSync(this.options.sslCertPath),
+            key: fs.readFileSync(this.options.sslKeyPath),
+            ca: (this.options.sslCertChainPath) ? fs.readFileSync(this.options.sslCertChainPath) : '',
+            passphrase: this.options.sslPassphrase,
         });
+
+        return this.options
     }
 
     /**
@@ -95,34 +89,34 @@ export class Server {
      *
      * @return {any}
      */
-    httpServer(secure: boolean) {
-        this.express = express();
-        this.express.use((req, res, next) => {
+    httpServer(secure: boolean): void {
+        this.app = express()
+        this.app.use((req, res, next) => {
             for (var header in this.options.headers) {
                 res.setHeader(header, this.options.headers[header]);
             }
             next();
-        });
+        })
 
         let httpServer: http.Server
         if (secure) {
-            httpServer = https.createServer(this.options, this.express);
+            httpServer = https.createServer(this.options, this.app);
         } else {
-            httpServer = http.createServer(this.express);
+            httpServer = http.createServer(this.app);
         }        
 
         httpServer.listen(this.getPort(), this.options.host);
 
         this.authorizeRequests();
 
-        return this.io = io(httpServer, this.options.socketio);
+        this.io = io(httpServer, this.options.socketio);
     }
 
     /**
      * Attach global protection to HTTP routes, to verify the API key.
      */
     authorizeRequests(): void {
-        this.express.param('appId', (req, res, next) => {
+        this.app?.param('appId', (req, res, next) => {
             if (!this.canAccess(req)) {
                 return this.unauthorizedResponse(req, res);
             }

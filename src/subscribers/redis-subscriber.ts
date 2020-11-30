@@ -6,6 +6,7 @@ export class RedisSubscriber implements Subscriber {
     /**
      * Redis pub/sub client.
      *
+     * @type {Redis.Redis}
      */
     private _redis: Redis.Redis;
 
@@ -13,7 +14,7 @@ export class RedisSubscriber implements Subscriber {
      *
      * KeyPrefix for used in the redis Connection
      *
-     * @type {String}
+     * @type {string}
      */
     private _keyPrefix: string;
 
@@ -22,7 +23,7 @@ export class RedisSubscriber implements Subscriber {
      *
      * @param {any} options
      */
-    constructor(private options) {
+    constructor(private options: any) {
         this._keyPrefix = options.databaseConfig.redis.keyPrefix || '';
         this._redis = new Redis(options.databaseConfig.redis);
     }
@@ -32,36 +33,25 @@ export class RedisSubscriber implements Subscriber {
      *
      * @return {Promise<void>}
      */
-    subscribe(callback): Promise<void> {
+    async subscribe(callback: Function): Promise<void> {
+        this._redis.on('pmessage', (subscribed, channel, message) => {
+            try {
+                message = JSON.parse(message);
 
-        return new Promise((resolve, reject) => {
-            this._redis.on('pmessage', (subscribed, channel, message) => {
-                try {
-                    message = JSON.parse(message);
-
-                    if (this.options.devMode) {
-                        Log.info("Channel: " + channel);
-                        Log.info("Event: " + message.event);
-                    }
-
-                    callback(channel.substring(this._keyPrefix.length), message);
-                } catch (e) {
-                    if (this.options.devMode) {
-                        Log.info("No JSON message");
-                    }
-                }
-            });
-
-            this._redis.psubscribe(`${this._keyPrefix}*`, (err, count) => {
-                if (err) {
-                    reject('Redis could not subscribe.')
+                if (this.options.devMode) {
+                    Log.info("Channel: " + channel);
+                    Log.info("Event: " + message.event);
                 }
 
-                Log.success('Listening for redis events...');
-
-                resolve();
-            });
+                callback(channel.substring(this._keyPrefix.length), message);
+            } catch (e) {
+                if (this.options.devMode) {
+                    Log.info("No JSON message");
+                }
+            }
         });
+        Log.success('Listening for redis events...')
+        await this._redis.psubscribe(`${this._keyPrefix}*`);
     }
 
     /**
@@ -69,14 +59,11 @@ export class RedisSubscriber implements Subscriber {
      *
      * @return {Promise<void>}
      */
-    unsubscribe(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            try {
-                this._redis.disconnect();
-                resolve();
-            } catch(e) {
-                reject('Could not disconnect from redis -> ' + e);
-            }
-        });
+    async unsubscribe(): Promise<void> {
+        try {
+            this._redis.disconnect();
+        } catch(err) {
+            throw new Error('Could not disconnect from redis -> ' + err);
+        }
     }
 }

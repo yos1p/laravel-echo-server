@@ -1,9 +1,9 @@
-const fs = require("fs");
-const path = require("path");
-const colors = require("colors");
-const echo = require("./../../dist");
-const inquirer = require("inquirer");
-const crypto = require("crypto");
+import fs from "fs";
+import path from "path";
+import colors from "colors";
+import echo from "./../../dist";
+import inquirer from "inquirer";
+import crypto from "crypto";
 
 import ErrnoException = NodeJS.ErrnoException;
 
@@ -91,7 +91,7 @@ export class Cli {
                         process.exit();
                     },
                     error => {
-                        console.error(colors.error(error));
+                        console.error(colors.red(error));
                     }
                 );
             },
@@ -278,10 +278,10 @@ export class Cli {
             yargs.argv.dir
         );
 
-        fs.access(configFile, fs.F_OK, error => {
+        fs.access(configFile, fs.constants.F_OK, error => {
             if (error) {
                 console.error(
-                    colors.error("Error: The config file could not be found.")
+                    colors.red("Error: The config file could not be found.")
                 );
 
                 return false;
@@ -306,7 +306,7 @@ export class Cli {
                     );
                 } catch {
                     console.error(
-                        colors.error(
+                        colors.red(
                             "Error: There was a problem reading the existing lock file."
                         )
                     );
@@ -328,7 +328,7 @@ export class Cli {
                             );
                         } else {
                             console.error(
-                                colors.error(
+                                colors.red(
                                     "Error: There is already a server running! Use the option '--force' to stop it and start another one."
                                 )
                             );
@@ -347,7 +347,7 @@ export class Cli {
                 error => {
                     if (error) {
                         console.error(
-                            colors.error("Error: Cannot write lock file.")
+                            colors.red("Error: Cannot write lock file.")
                         );
 
                         return false;
@@ -403,7 +403,7 @@ export class Cli {
                 );
             } catch {
                 console.error(
-                    colors.error(
+                    colors.red(
                         "Error: There was a problem reading the lock file."
                     )
                 );
@@ -418,11 +418,11 @@ export class Cli {
                     console.log(colors.green("Closed the running server."));
                 } catch (e) {
                     console.error(e);
-                    console.log(colors.error("No running servers to close."));
+                    console.log(colors.red("No running servers to close."));
                 }
             }
         } else {
-            console.log(colors.error("Error: Could not find any lock file."));
+            console.log(colors.red("Error: Could not find any lock file."));
         }
     }
 
@@ -476,7 +476,7 @@ export class Cli {
                 return client.appId == appId;
             });
 
-            if (client) {
+            if (client && index != null) {
                 client.key = this.createApiKey();
 
                 options.clients[index] = client;
@@ -529,7 +529,7 @@ export class Cli {
             return client.appId == appId;
         });
 
-        if (index >= 0) {
+        if (index != null && index >= 0) {
             options.clients.splice(index, 1);
         }
 
@@ -541,7 +541,7 @@ export class Cli {
     /**
      * Gets the config file with the provided args
      */
-    getConfigFile(file: string = null, dir: string = null): string {
+    getConfigFile(file: string | any = null, dir: string | any = null): string {
         const filePath = path.join(
             dir || "",
             file || "laravel-echo-server.json"
@@ -562,7 +562,7 @@ export class Cli {
             data = JSON.parse(fs.readFileSync(file, "utf8"));
         } catch {
             console.error(
-                colors.error(
+                colors.red(
                     "Error: There was a problem reading the config file."
                 )
             );
