@@ -1,25 +1,23 @@
-var fs = require('fs');
-var http = require('http');
-var https = require('https');
-var express = require('express');
-var url = require('url');
-var io = require('socket.io');
-import { Log } from './log';
+import fs from 'fs'
+import url from 'url'
+import http, { HttpBase } from 'http'
+import https from 'https'
+import { Log } from './log'
+import io from 'socket.io'
+import express from 'express'
 
 export class Server {
     /**
      * The http server.
      *
-     * @type {any}
      */
-    public express: any;
+    public express: express.Application;
 
     /**
      * Socket.io client.
      *
-     * @type {object}
      */
-    public io: any;
+    public io: io.Server;
 
     /**
      * Create a new server instance.
@@ -106,11 +104,12 @@ export class Server {
             next();
         });
 
+        let httpServer: http.Server
         if (secure) {
-            var httpServer = https.createServer(this.options, this.express);
+            httpServer = https.createServer(this.options, this.express);
         } else {
-            var httpServer = http.createServer(this.express);
-        }
+            httpServer = http.createServer(this.express);
+        }        
 
         httpServer.listen(this.getPort(), this.options.host);
 
@@ -175,7 +174,7 @@ export class Server {
      * @param  {any} req
      * @return {string|boolean}
      */
-    getAuthKey(req: any): (string | boolean) {
+    getAuthKey(req: any): (string | string[] | boolean) {
         if (req.headers.authorization) {
             return req.headers.authorization.replace('Bearer ', '');
         }

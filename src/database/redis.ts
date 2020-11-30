@@ -1,11 +1,11 @@
-import { DatabaseDriver } from './database-driver';
-var Redis = require('ioredis');
+import { DatabaseDriver } from './database-driver'
+import * as Redis from "ioredis";
 
 export class RedisDatabase implements DatabaseDriver {
     /**
      * Redis client.
      */
-    private _redis: any;
+    private _redis: Redis.Redis
 
     /**
      * Create a new cache instance.
@@ -35,6 +35,16 @@ export class RedisDatabase implements DatabaseDriver {
                     "members": value
                 }
             }));
+        }
+    }
+
+    /**
+     * Publish data to Redis in channel so that other Subscriber can receive message
+     */
+    pub(channel: string, message: string): void {
+        this._redis.publish(channel, message)
+        if (this.options.devMode) {
+            console.log(`Publishing message to channel: ${channel}, with message: ${message}`)
         }
     }
 }

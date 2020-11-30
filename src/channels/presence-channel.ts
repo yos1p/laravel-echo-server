@@ -1,17 +1,19 @@
+import { RedisDatabase } from '../database/redis';
 import { Database } from './../database';
 import { Log } from './../log';
+import { Server } from 'socket.io'
 var _ = require("lodash");
 
 export class PresenceChannel {
     /**
      * Database instance.
      */
-    db: Database;
+    db: Database | RedisDatabase;
 
     /**
      * Create a new Presence channel instance.
      */
-    constructor(private io, private options: any) {
+    constructor(private io: Server, private options: any) {
         this.db = new Database(options);
     }
 
@@ -139,11 +141,16 @@ export class PresenceChannel {
 
     /**
      * On join event handler.
+     * 
+     * Websocket also publish join channel here
      */
     onJoin(socket: any, channel: string, member: any): void {
         this.io.sockets.connected[socket.id].broadcast
             .to(channel)
-            .emit("presence:joining", channel, member);
+            .emit("presence:joining", channel, member)
+        if (this.db instanceof RedisDatabase) {
+            this.db.pub(`${channel}-join`, JSON.stringify(member))
+        }
     }
 
     /**
