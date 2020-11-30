@@ -4,6 +4,7 @@ import { Server } from './server';
 import { HttpApi } from './api';
 import { Log } from './log';
 import fs from 'fs';
+import io from 'socket.io'
 const packageFile = require('../package.json');
 const { constants } = require('crypto');
 
@@ -80,7 +81,7 @@ export class EchoServer {
     /**
      * Start the Echo Server.
      */
-    run(options: any): Promise<any> {
+    run(options: any): Promise<EchoServer> {
         return new Promise((resolve, reject) => {
             this.options = Object.assign(this.defaultOptions, options);
             this.startup();
@@ -98,8 +99,8 @@ export class EchoServer {
     /**
      * Initialize the class
      */
-    init(io: any): Promise<any> {
-        return new Promise((resolve, reject) => {
+    init(io: io.Server): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
             this.channel = new Channel(io, this.options);
 
             this.subscribers = [];
@@ -150,7 +151,7 @@ export class EchoServer {
      * Listen for incoming event from subscibers.
      */
     listen(): Promise<any> {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             let subscribePromises = this.subscribers.map(subscriber => {
                 return subscriber.subscribe((channel, message) => {
                     return this.broadcast(channel, message);

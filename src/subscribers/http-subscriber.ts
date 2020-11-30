@@ -1,21 +1,21 @@
 import { Log } from './../log';
 import { Subscriber } from './subscriber';
-var url = require('url');
+import url from 'url'
+import express from 'express'
 
 export class HttpSubscriber implements Subscriber {
     /**
      * Create new instance of http subscriber.
      *
-     * @param  {any} express
      */
-    constructor(private express, private options) { }
+    constructor(private express: express.Application, private options) { }
 
     /**
      * Subscribe to events to broadcast.
      *
-     * @return {void}
+     * @return {Promise<void>}
      */
-    subscribe(callback): Promise<any> {
+    subscribe(callback): Promise<void> {
         return new Promise((resolve, reject) => {
             // Broadcast a message to a channel
             this.express.post('/apps/:appId/events', (req, res) => {
@@ -39,9 +39,9 @@ export class HttpSubscriber implements Subscriber {
     /**
      * Unsubscribe from events to broadcast.
      *
-     * @return {Promise}
+     * @return {Promise<void>}
      */
-    unsubscribe(): Promise<any> {
+    unsubscribe(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
                 this.express.post('/apps/:appId/events', (req, res) => {

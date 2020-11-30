@@ -1,4 +1,4 @@
-var Redis = require('ioredis');
+import Redis from 'ioredis'
 import { Log } from './../log';
 import { Subscriber } from './subscriber';
 
@@ -6,9 +6,8 @@ export class RedisSubscriber implements Subscriber {
     /**
      * Redis pub/sub client.
      *
-     * @type {object}
      */
-    private _redis: any;
+    private _redis: Redis.Redis;
 
     /**
      *
@@ -31,9 +30,9 @@ export class RedisSubscriber implements Subscriber {
     /**
      * Subscribe to events to broadcast.
      *
-     * @return {Promise<any>}
+     * @return {Promise<void>}
      */
-    subscribe(callback): Promise<any> {
+    subscribe(callback): Promise<void> {
 
         return new Promise((resolve, reject) => {
             this._redis.on('pmessage', (subscribed, channel, message) => {
@@ -68,9 +67,9 @@ export class RedisSubscriber implements Subscriber {
     /**
      * Unsubscribe from events to broadcast.
      *
-     * @return {Promise}
+     * @return {Promise<void>}
      */
-    unsubscribe(): Promise<any> {
+    unsubscribe(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
                 this._redis.disconnect();
