@@ -27,7 +27,7 @@ export class SQLiteDatabase implements DatabaseDriver {
     /**
      * Retrieve data from redis.
      */
-    get(key: string): Promise<any> {
+    async get(key: string): Promise<any> {
         return new Promise<any>((resolve, reject) => {
             this._sqlite.get("SELECT value FROM key_value WHERE key = $key", {
                 $key: key,
@@ -46,10 +46,13 @@ export class SQLiteDatabase implements DatabaseDriver {
     /**
      * Store data to cache.
      */
-    set(key: string, value: any): void {
-        this._sqlite.run("INSERT OR REPLACE INTO key_value (key, value) VALUES ($key, $value)", {
-            $key: key,
-            $value: JSON.stringify(value)
-        });
+    async set(key: string, value: any): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            this._sqlite.run("INSERT OR REPLACE INTO key_value (key, value) VALUES ($key, $value)", {
+                $key: key,
+                $value: JSON.stringify(value)
+            });
+            resolve()
+        })
     }
 }

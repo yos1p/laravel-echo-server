@@ -1,3 +1,5 @@
+import { Channel } from "../channels";
+
 export interface Subscriber {
     /**
      * Subscribe to incoming events.

@@ -86,6 +86,11 @@ export class EchoServer {
         this.server = new Server(this.options)
 
         let io = await this.server.init()
+        if (io == undefined) {
+            throw new Error('Server not initialized properly.')
+        }
+        
+        await this.init(io)
         Log.info('\nServer ready!\n')
         return this
     }
@@ -94,6 +99,7 @@ export class EchoServer {
      * Initialize the class
      */
     async init(io: io.Server) {
+        Log.info("Initializing server")
         this.channel = new Channel(io, this.options)
 
         this.subscribers = []
@@ -101,10 +107,13 @@ export class EchoServer {
             throw new Error('Server not initialized properly.')
         }
 
-        if (this.options.subscribers.http)
+        if (this.options.subscribers.http) {
             this.subscribers.push(new HttpSubscriber(this.server.app, this.options))
-        if (this.options.subscribers.redis)
+        }
+
+        if (this.options.subscribers.redis) {
             this.subscribers.push(new RedisSubscriber(this.options))
+        }
 
         this.httpApi = new HttpApi(io, this.channel, this.server.app, this.options.apiOriginAllow)
         this.httpApi.init()
@@ -116,7 +125,7 @@ export class EchoServer {
     /**
      * Text shown at startup.
      */
-    async startup() {
+    startup() {
         Log.title(`\nL A R A V E L  E C H O  S E R V E R\n`)
         Log.info(`version ${packageFile.version}\n`)
 
@@ -130,24 +139,24 @@ export class EchoServer {
     /**
      * Stop the echo server.
      */
-    stop() {
-        console.log('Stopping the LARAVEL ECHO SERVER')
-        this.subscribers.forEach(async subscriber => {
+    async stop() {
+        Log.info('Stopping the LARAVEL ECHO SERVER')
+        for (let subscriber of this.subscribers) {
             await subscriber.unsubscribe()
-        })
+        }
         this.server?.io?.close()
-        console.log('The LARAVEL ECHO SERVER server has been stopped.')
+        Log.info('The LARAVEL ECHO SERVER server has been stopped.')
     }
 
     /**
      * Listen for incoming event from subscibers.
      */
     async listen() {
-        this.subscribers.map(subscriber => {
-            return subscriber.subscribe((channel, message) => {
+        for (let subscriber of this.subscribers) {
+            await subscriber.subscribe((channel, message) => {
                 return this.broadcast(channel, message)
             })
-        })
+        }
     }
 
     /**
@@ -222,12 +231,12 @@ export class EchoServer {
      * On socket disconnecting.
      */
     onDisconnecting(socket: any): void {
-        socket.on('disconnecting', (reason) => {
-            Object.keys(socket.rooms).forEach(room => {
+        socket.on('disconnecting', async (reason) => {
+            for (let room of Object.keys(socket.rooms)) {
                 if (room !== socket.id) {
-                    this.channel?.leave(socket, room, reason)
+                    await this.channel?.leave(socket, room, reason)
                 }
-            })
+            }
         })
     }
 

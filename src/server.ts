@@ -34,6 +34,10 @@ export class Server {
         let host = this.options.host || 'localhost';
 
         Log.success(`Running at ${host} on port ${this.getPort()}`);
+        if (this.io == null) {
+            throw new Error("Server not initialized properly")
+        }
+
         return this.io
     }
 
@@ -90,8 +94,7 @@ export class Server {
      * @return {any}
      */
     httpServer(secure: boolean): void {
-        this.app = express()
-        this.app.use((req, res, next) => {
+        this.app = express().use((req, res, next) => {
             for (var header in this.options.headers) {
                 res.setHeader(header, this.options.headers[header]);
             }

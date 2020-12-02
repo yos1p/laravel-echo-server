@@ -50,8 +50,8 @@ export class RedisSubscriber implements Subscriber {
                 }
             }
         });
-        Log.success('Listening for redis events...')
         await this._redis.psubscribe(`${this._keyPrefix}*`);
+        Log.success('Listening for redis events...')
     }
 
     /**

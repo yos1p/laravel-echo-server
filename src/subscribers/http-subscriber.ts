@@ -25,8 +25,7 @@ export class HttpSubscriber implements Subscriber {
 
             req.on('data', (chunk) => body.push(chunk))
                 .on('end', () => this.handleData(req, res, body, callback));
-        });
-
+        });     
         Log.success('Listening for http events...');
     }
 

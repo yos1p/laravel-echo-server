@@ -28,22 +28,22 @@ export class Database implements DatabaseDriver {
     /**
      * Get a value from the database.
      */
-    get(key: string): Promise<any> {
+    async get(key: string): Promise<any> {
         if (this.driver == null) {
             throw new Error('Database not initialized properly')
         }
 
-        return this.driver.get(key)
+        return await this.driver.get(key)
     }
 
     /**
      * Set a value to the database.
      */
-    set(key: string, value: any): void {
+    async set(key: string, value: any): Promise<void> {
         if (this.driver == null) {
             throw new Error('Database not initialized properly')
         }
 
-        this.driver.set(key, value)
+        await this.driver.set(key, value)
     }
 }

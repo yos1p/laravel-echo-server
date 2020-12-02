@@ -10,5 +10,5 @@ export interface DatabaseDriver {
     /**
      * Set a value to the database.
      */
-    set(key: string, value: any): void;
+    set(key: string, value: any): Promise<void>;
 }

@@ -1,7 +1,9 @@
 import { Log } from './../log'
 let url = require('url')
 import * as _ from 'lodash'
+import io from 'socket.io'
 import { Channel } from '../channels'
+import express from 'express'
 
 export class HttpApi {
     /**
@@ -9,10 +11,10 @@ export class HttpApi {
      *
      * @param  {any} io
      * @param  {any} channel
-     * @param  {any} app
+     * @param  {express.Application} app
      * @param  {object} options object
      */
-    constructor(private io, private channel: Channel, private app, private options) { }
+    constructor(private io: io.Server, private channel: Channel, private app: express.Application, private options) { }
 
     /**
      * Initialize the API.
@@ -78,7 +80,6 @@ export class HttpApi {
      */
     getStatus(req: any, res: any): void {
         res.json({
-            subscription_count: this.io.engine.clientsCount,
             uptime: process.uptime(),
             memory_usage: process.memoryUsage(),
         })

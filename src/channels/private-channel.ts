@@ -1,25 +1,21 @@
-let request = require('request');
 let url = require('url');
-import { Channel } from './channel';
+import axios from 'axios'
 import { Log } from './../log';
+import io from 'socket.io'
+import { ChannelError } from './channel'
 
 export class PrivateChannel {
+
     /**
      * Create a new private channel instance.
      */
     constructor(private options: any) {
-        this.request = request;
     }
-
-    /**
-     * Request client.
-     */
-    private request: any;
 
     /**
      * Send authentication request to application server.
      */
-    authenticate(socket: any, data: any): Promise<any> {
+    async authenticate(socket: io.Socket, data: any): Promise<any> {
         let options = {
             url: this.authHost(socket) + this.options.authEndpoint,
             form: { channel_name: data.channel },
@@ -31,7 +27,7 @@ export class PrivateChannel {
             Log.info(`[${new Date().toISOString()}] - Sending auth request to: ${options.url}\n`);
         }
 
-        return this.serverRequest(socket, options);
+        return await this.serverRequest(socket, options);
     }
 
     /**
@@ -79,47 +75,42 @@ export class PrivateChannel {
     /**
      * Send a request to the server.
      */
-    protected serverRequest(socket: any, options: any): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
-            options.headers = this.prepareHeaders(socket, options);
-            let body;
-
-            this.request.post(options, (error, response, body, next) => {
-                if (error) {
-                    if (this.options.devMode) {
-                        Log.error(`[${new Date().toISOString()}] - Error authenticating ${socket.id} for ${options.form.channel_name}`);
-                        Log.error(error);
-                    }
-
-                    reject({ reason: 'Error sending authentication request.', status: 0 });
-                } else if (response.statusCode !== 200) {
-                    if (this.options.devMode) {
-                        Log.warning(`[${new Date().toISOString()}] - ${socket.id} could not be authenticated to ${options.form.channel_name}`);
-                        Log.error(response.body);
-                    }
-
-                    reject({ reason: 'Client can not be authenticated, got HTTP status ' + response.statusCode, status: response.statusCode });
-                } else {
-                    if (this.options.devMode) {
-                        Log.info(`[${new Date().toISOString()}] - ${socket.id} authenticated for: ${options.form.channel_name}`);
-                    }
-
-                    try {
-                        body = JSON.parse(response.body);
-                    } catch (e) {
-                        body = response.body
-                    }
-
-                    resolve(body);
+    protected async serverRequest(socket: io.Socket, options: any): Promise<any> {
+        options.headers = this.prepareHeaders(socket, options);
+        try {
+            let response = await axios.post(options.url, options.form, {headers: options.headers})
+            if (response.status !== 200) {
+                if (this.options.devMode) {
+                    Log.warning(`[${new Date().toISOString()}] - ${socket.id} could not be authenticated to ${options.form.channel_name}`);
+                    Log.error(response.data);
                 }
-            });
-        });
+
+                throw new ChannelError('Client can not be authenticated, got HTTP status ' + response.status, response.status);
+            }
+
+            if (this.options.devMode) {
+                Log.info(`[${new Date().toISOString()}] - ${socket.id} authenticated for: ${options.form.channel_name}`);
+            }
+
+            try {
+                return JSON.parse(response.data);
+            } catch (e) {
+                return response.data
+            }
+        } catch (error) {
+            if (this.options.devMode) {
+                Log.error(`[${new Date().toISOString()}] - Error authenticating ${socket.id} for ${options.form.channel_name}`);
+                Log.error(error);
+            }
+
+            throw new ChannelError('Error sending authentication request.', 0)
+        }
     }
 
     /**
      * Prepare headers for request to app server.
      */
-    protected prepareHeaders(socket: any, options: any): any {
+    protected prepareHeaders(socket: io.Socket, options: any): any {
         options.headers['Cookie'] = options.headers['Cookie'] || socket.request.headers.cookie;
         options.headers['X-Requested-With'] = 'XMLHttpRequest';
 

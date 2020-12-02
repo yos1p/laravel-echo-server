@@ -1,6 +1,7 @@
 import { PresenceChannel } from './presence-channel';
 import { PrivateChannel } from './private-channel';
 import { Log } from './../log';
+import io from 'socket.io'
 
 export class Channel {
     /**
@@ -26,7 +27,7 @@ export class Channel {
     /**
      * Create a new channel instance.
      */
-    constructor(private io, private options) {
+    constructor(private io: io.Server, private options) {
         this.private = new PrivateChannel(options);
         this.presence = new PresenceChannel(io, options);
 
@@ -38,10 +39,10 @@ export class Channel {
     /**
      * Join a channel.
      */
-    join(socket, data): void {
+    async join(socket: io.Socket, data): Promise<void> {
         if (data.channel) {
             if (this.isPrivate(data.channel)) {
-                this.joinPrivate(socket, data);
+                await this.joinPrivate(socket, data);
             } else {
                 socket.join(data.channel);
                 this.onJoin(socket, data.channel);
@@ -52,7 +53,7 @@ export class Channel {
     /**
      * Trigger a client message
      */
-    clientEvent(socket, data): void {
+    clientEvent(socket: io.Socket, data) {
         try {
             data = JSON.parse(data);
         } catch (e) {
@@ -73,10 +74,10 @@ export class Channel {
     /**
      * Leave a channel.
      */
-    leave(socket: any, channel: string, reason: string): void {
+    async leave(socket: io.Socket, channel: string, reason: string): Promise<void> {
         if (channel) {
             if (this.isPresence(channel)) {
-                this.presence.leave(socket, channel)
+                await this.presence.leave(socket, channel)
             }
 
             socket.leave(channel);
@@ -104,9 +105,10 @@ export class Channel {
     /**
      * Join private channel, emit data to presence channels.
      */
-    joinPrivate(socket: any, data: any): void {
-        this.private.authenticate(socket, data).then(res => {
-            socket.join(data.channel);
+    async joinPrivate(socket: io.Socket, data: any): Promise<void> {
+        try {
+            let res = await this.private.authenticate(socket, data)
+            socket.join(data.channel)
 
             if (this.isPresence(data.channel)) {
                 var member = res.channel_data;
@@ -114,18 +116,28 @@ export class Channel {
                     member = JSON.parse(res.channel_data);
                 } catch (e) { }
 
-                this.presence.join(socket, data.channel, member);
+                await this.presence.join(socket, data.channel, member);
             }
 
             this.onJoin(socket, data.channel);
-        }, error => {
-            if (this.options.devMode) {
-                Log.error(error.reason);
-            }
+        } catch (error) {
+            if (error instanceof ChannelError) {
+                if (this.options.devMode) {
+                    Log.error(error.reason);
+                }
+    
+                this.io.sockets.to(socket.id)
+                    .emit('subscription_error', data.channel, error.statusCode);
+            } else {
+                if (this.options.devMode) {
+                    Log.error(error.message);
+                }
 
-            this.io.sockets.to(socket.id)
-                .emit('subscription_error', data.channel, error.status);
-        });
+                this.io.sockets.to(socket.id)
+                    .emit('subscription_error', data.channel, 500);
+            }
+            
+        }
     }
 
     /**
@@ -163,5 +175,17 @@ export class Channel {
      */
     isInChannel(socket: any, channel: string): boolean {
         return !!socket.rooms[channel];
+    }
+}
+
+export class ChannelError extends Error {
+
+    reason: string
+    statusCode: number 
+
+    constructor(reason: string, statusCode: number) {
+        super(reason)
+        this.reason = reason
+        this.statusCode = statusCode
     }
 }

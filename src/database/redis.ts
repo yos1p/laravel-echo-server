@@ -1,5 +1,6 @@
 import { DatabaseDriver } from './database-driver'
 import Redis from "ioredis"
+import { Log } from '../log'
 
 export class RedisDatabase implements DatabaseDriver {
     /**
